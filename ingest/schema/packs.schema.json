@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "packs.schema.json",
+  "title": "Booster pack slots",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "packSize",
+    "slots"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "packSize": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "about": {
+      "type": "string"
+    },
+    "pauperRarities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "Common",
+          "Uncommon",
+          "Rare",
+          "Super Rare",
+          "Legendary",
+          "Epic",
+          "Enchanted",
+          "Iconic",
+          "Special"
+        ]
+      }
+    },
+    "slots": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "slot",
+          "count",
+          "weights"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slot": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,23}$"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "perInk": {
+            "type": "boolean"
+          },
+          "foil": {
+            "type": "boolean"
+          },
+          "weights": {
+            "$ref": "#/$defs/weights"
+          },
+          "pauper": {
+            "$ref": "#/$defs/weights"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "weights": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    }
+  }
+}

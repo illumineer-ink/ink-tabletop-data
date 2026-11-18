@@ -51,8 +51,9 @@ python3 ingest/validate.py out
 | `index/<lang>.tsv` | One row per printing. This is the only file a deck import needs. |
 | `sets/<lang>/<set>.tsv` | Full card records for one set: the index fields plus rarity, move cost, deck limit, format legality, keywords and more. |
 | `aliases.json` | Normalized old or misspelled names mapped to the normalized card name. |
+| `pack_slots.json` | Booster pack slots and rarity weights for the pack opener, copied from `ingest/pack_slots.json`. |
 
-`manifest.json` and `aliases.json` are JSON and stay under 16 KB each. The card files are tab-separated, because Tabletop Simulator's JSON decoder slows down sharply on large files.
+`manifest.json`, `aliases.json` and `pack_slots.json` are JSON and stay under 16 KB each. The card files are tab-separated, because Tabletop Simulator's JSON decoder slows down sharply on large files.
 
 ### TSV format
 
@@ -114,3 +115,22 @@ Examples:
 ## Aliases
 
 `ingest/aliases.json` maps known misspellings or old names to the name LorcanaJSON uses. The build normalizes both sides, drops entries that normalize to the same key, and fails when a target is not a real English card name. Aliases apply to English names.
+
+## Pack slots
+
+`ingest/pack_slots.json` describes a booster pack as a list of slots. The build checks it against `ingest/schema/packs.schema.json`, copies it to `pack_slots.json` and names it in the manifest under `files.packs`. The mod reads the odds from this file, so changing the odds needs no mod update.
+
+Each slot has a name, a card `count` and `weights`, a map from rarity to a whole number. Weights are relative: `{"Rare": 5, "Super Rare": 4, "Legendary": 1}` gives Rare 5 in 10. `perInk` draws the slot's cards one ink at a time, in the order Amber, Amethyst, Emerald, Ruby, Sapphire, Steel. `foil` marks the slot's card as a foil. `pauper` gives the weights to use when the pauper option is on; only the rarities listed in `pauperRarities` are rolled then.
+
+The odds are an approximation, not the official print run:
+
+| Slot | Cards | Odds |
+| --- | --- | --- |
+| common | 6 | One Common of each ink |
+| uncommon | 3 | Uncommon |
+| rare | 2 | Rare 5, Super Rare 4, Legendary 1 (out of 10) |
+| foil | 1 | Common 94, Uncommon 40, Rare 32, Super Rare 16, Legendary 6, Enchanted 2, Epic 1, Iconic 1 (out of 192) |
+
+With pauper on, the rare slots roll Uncommon and the foil slot rolls Common 94 or Uncommon 40.
+
+A pack never holds the same card twice. When a set has no card left of a rolled rarity, that rarity drops out of the roll; when a slot has no card left at all, the pack uses any unused card of a rarity the pack data lists, and when the set runs out completely, the pack comes out short.

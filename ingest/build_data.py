@@ -7,6 +7,7 @@ directory present, and writes:
   index/<lang>.tsv          compact name index, the only file an import needs
   sets/<lang>/<set>.tsv     full card records
   aliases.json              known spelling drift between deck sites
+  pack_slots.json           booster pack slots and rarity weights, copied from ingest/
 
 Card files are tab-separated (see datatsv.py) because Tabletop Simulator's
 JSON decoder is too slow for large files.
@@ -37,7 +38,8 @@ import validate
 
 SCHEMA_VERSION = 1
 SOURCE = {"name": "LorcanaJSON", "url": "https://lorcanajson.org"}
-FILES = {"index": "index/{lang}.tsv", "sets": "sets/{lang}/{set}.tsv", "aliases": "aliases.json"}
+FILES = {"index": "index/{lang}.tsv", "sets": "sets/{lang}/{set}.tsv", "aliases": "aliases.json",
+         "packs": "pack_slots.json"}
 INDEX_COLUMNS = validate.load_schema("index")["columns"]
 CARD_COLUMNS = validate.load_schema("card")["columns"]
 JSON_LIMIT = validate.JSON_LIMIT
@@ -365,7 +367,16 @@ def build_aliases(seed, known_names):
     return {"schemaVersion": SCHEMA_VERSION, "aliases": dict(sorted(out.items()))}
 
 
-def build(src, lorcast_path=None, aliases_path=None, previous=None):
+def load_packs(path):
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    errors = validate.check_packs(data, path)
+    if errors:
+        raise BuildError("; ".join(errors[:5]))
+    return data
+
+
+def build(src, lorcast_path=None, aliases_path=None, previous=None, packs_path=None):
     """Build every output document in memory. Returns {relative path: object}."""
     langs = [l for l in sorted(os.listdir(src)) if os.path.isdir(os.path.join(src, l)) and LANG_RE.match(l)]
     langs.sort(key=lambda l: (LANG_ORDER.index(l) if l in LANG_ORDER else len(LANG_ORDER), l))
@@ -432,6 +443,7 @@ def build(src, lorcast_path=None, aliases_path=None, previous=None):
         check_counts(lang_info, previous)
     seed = load_aliases(aliases_path or os.path.join(HERE, "aliases.json"))
     docs[FILES["aliases"]] = build_aliases(seed, en_names)
+    docs[FILES["packs"]] = load_packs(packs_path or os.path.join(HERE, "pack_slots.json"))
     docs["manifest.json"] = {
         "schemaVersion": SCHEMA_VERSION,
         "dataVersion": max(versions),

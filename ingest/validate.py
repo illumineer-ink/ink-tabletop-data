@@ -120,6 +120,34 @@ def _check_aliases(data, path):
     return errors
 
 
+def check_packs(data, path):
+    """Check booster pack slots against packs.schema.json and the rules the schema cannot express."""
+    errors = validate(data, load_schema("packs"), path=path)
+    if errors:
+        return errors
+    rarities = load_schema("card")["properties"]["rarity"]["enum"]
+    total = 0
+    names = set()
+    for i, slot in enumerate(data["slots"]):
+        where = "%s.slots[%d]" % (path, i)
+        if slot["slot"] in names:
+            errors.append("%s: slot %r is listed twice" % (where, slot["slot"]))
+        names.add(slot["slot"])
+        total += slot["count"]
+        for key in ("weights", "pauper"):
+            weights = slot.get(key)
+            if weights is None:
+                continue
+            if not weights:
+                errors.append("%s.%s: no rarities" % (where, key))
+            for rarity in weights:
+                if rarity not in rarities:
+                    errors.append("%s.%s: unknown rarity %r" % (where, key, rarity))
+    if total != data["packSize"]:
+        errors.append("%s: slots hold %d cards, packSize is %d" % (path, total, data["packSize"]))
+    return errors
+
+
 def read_rows(path, schema):
     """Decode one TSV file with a row schema. Returns (rows, errors)."""
     try:
@@ -190,6 +218,12 @@ def validate_tree(data_dir):
         errors.extend(_check_aliases(read_json(rel), rel))
     except (OSError, ValueError) as e:
         errors.append("%s: %s" % (rel, e))
+    rel = manifest["files"].get("packs")
+    if rel is not None:
+        try:
+            errors.extend(check_packs(read_json(rel), rel))
+        except (OSError, ValueError) as e:
+            errors.append("%s: %s" % (rel, e))
     return errors
 
 

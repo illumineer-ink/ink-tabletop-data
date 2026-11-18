@@ -26,7 +26,7 @@ jobs:
       - name: Public check
         run: |
           mkdir "$RUNNER_TEMP/code"
-          git ls-files -z -- . ':!index' ':!sets' ':!manifest.json' ':!aliases.json' | xargs -0 cp --parents -t "$RUNNER_TEMP/code"
+          git ls-files -z -- . ':!index' ':!sets' ':!manifest.json' ':!aliases.json' ':!pack_slots.json' | xargs -0 cp --parents -t "$RUNNER_TEMP/code"
           python3 .github/check_public.py "$RUNNER_TEMP/code"
 
       - name: Tests
@@ -70,10 +70,10 @@ jobs:
 
       - name: Stage
         run: |
-          rm -rf index sets manifest.json aliases.json
-          cp -R "$RUNNER_TEMP/out/index" "$RUNNER_TEMP/out/sets" "$RUNNER_TEMP/out/manifest.json" "$RUNNER_TEMP/out/aliases.json" .
+          rm -rf index sets manifest.json aliases.json pack_slots.json
+          cp -R "$RUNNER_TEMP/out/index" "$RUNNER_TEMP/out/sets" "$RUNNER_TEMP/out/manifest.json" "$RUNNER_TEMP/out/aliases.json" "$RUNNER_TEMP/out/pack_slots.json" .
           python3 ingest/validate.py .
-          git add -A -- index sets manifest.json aliases.json
+          git add -A -- index sets manifest.json aliases.json pack_slots.json
 
       - name: Commit and tag
         run: |

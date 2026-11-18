@@ -13,6 +13,7 @@ import re
 import sys
 import tokenize
 import unicodedata
+import zlib
 
 I = re.I
 
@@ -94,6 +95,7 @@ SHELL_BANG = re.compile(r"#!\S*\b(env\s+)?(ba|da|k|z)?sh\b")
 PY_BANG = re.compile(r"#!\S*\b(env\s+)?python")
 SCRIPTS = ("LATIN", "CYRILLIC", "GREEK")
 FOLD_TABLE = "scripts/lib/fold.lua"
+FOLD_BLOCK = [None]
 FOLD_DATA = ("ingest/fold.json", "ingest/normalize_vectors.json")
 FOLD_EXEMPT = {"wording 13", "wording 19", "unicode"}
 
@@ -203,9 +205,19 @@ def kind(rel, first_line):
     return None
 
 
-def check_line(rep, rel, n, line, license_file):
+def check_line(rep, rel, n, line, license_file, fold_line=None):
     norm = normalize(line)
     plain = clean(line)
+    if fold_line is not None and fold_line != line:
+        fold_norm = normalize(fold_line)
+        for rule, rx in TEXT_RULES:
+            if rule in FOLD_EXEMPT and rx.search(fold_norm):
+                rep.hit(rel, n, rule, fold_line)
+        for rule, rx in TEXT_RULES:
+            if rule not in FOLD_EXEMPT and (rx.search(line) or (norm != line and rx.search(norm))):
+                rep.hit(rel, n, rule, line)
+        check_unicode(rep, rel, n, fold_line, clean(fold_line))
+        return
     for rule, rx in TEXT_RULES:
         if rule == "style 12" and license_file:
             continue
@@ -299,14 +311,26 @@ def check_json(rep, rel, text, depth=0):
     escaped = "\\u" in text or depth > 0
     for key, s in json_strings(data):
         if escaped:
-            for part in s.split("\n"):
+            exempt = rel in FOLD_DATA
+            if key == "LuaScript" and FOLD_BLOCK[0] and FOLD_BLOCK[0] in s:
+                s_fold = s.replace(FOLD_BLOCK[0], "", 1)
+            else:
+                s_fold = s
+            for part, fold_part in zip(s.split("\n"), s_fold.split("\n") if s_fold is s else [None] * (s.count("\n") + 1)):
                 norm = normalize(part)
                 for rule, rx in TEXT_RULES:
-                    if rule in FOLD_EXEMPT and rel in FOLD_DATA:
+                    if rule in FOLD_EXEMPT and (exempt or s_fold is not s):
                         continue
                     if rx.search(norm):
                         rep.hit(rel, 0, rule, "escaped text: " + part)
-                if rel not in FOLD_DATA:
+                if not exempt and s_fold is s:
+                    check_unicode(rep, rel, 0, part, clean(part), "escaped text: ")
+            if s_fold is not s:
+                for part in s_fold.split("\n"):
+                    norm = normalize(part)
+                    for rule, rx in TEXT_RULES:
+                        if rule in FOLD_EXEMPT and rx.search(norm):
+                            rep.hit(rel, 0, rule, "escaped text: " + part)
                     check_unicode(rep, rel, 0, part, clean(part), "escaped text: ")
         if depth < 32 and s.lstrip()[:1] in ("{", "["):
             check_json(rep, rel, s, depth + 1)
@@ -316,8 +340,54 @@ def check_json(rep, rel, text, depth=0):
             check_comments(rep, rel, s, "xml", "XmlUI: ")
 
 
+def image_text(data):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        parts, i = [], 8
+        while i + 8 <= len(data):
+            size = int.from_bytes(data[i:i + 4], "big")
+            kind = data[i + 4:i + 8]
+            body = data[i + 8:i + 8 + size]
+            if kind != b"IDAT":
+                parts.append(kind + b" " + body)
+                packed = None
+                nul = body.find(b"\x00")
+                if kind == b"zTXt" and nul >= 0:
+                    packed = body[nul + 2:]
+                elif kind == b"iTXt" and nul >= 0 and body[nul + 1:nul + 2] == b"\x01":
+                    lang = body.find(b"\x00", nul + 3)
+                    key = body.find(b"\x00", lang + 1) if lang >= 0 else -1
+                    packed = body[key + 1:] if key >= 0 else None
+                if packed is not None:
+                    try:
+                        parts.append(zlib.decompressobj().decompress(packed, 1 << 20))
+                    except zlib.error:
+                        parts.append(b"undecodable compressed text")
+            i += 12 + size
+        if i != len(data):
+            parts.append(data[i:])
+        return b"\n".join(parts)
+    if data.startswith(b"\xff\xd8"):
+        parts, i = [], 2
+        while i + 4 <= len(data) and data[i] == 0xFF:
+            marker = data[i + 1]
+            if marker == 0xDA:
+                end = data.rfind(b"\xff\xd9")
+                if end >= 0:
+                    parts.append(data[end + 2:])
+                return b"\n".join(parts)
+            size = int.from_bytes(data[i + 2:i + 4], "big")
+            parts.append(data[i + 4:i + 2 + size])
+            i += 2 + size
+        parts.append(data[i:])
+        return b"\n".join(parts)
+    return None
+
+
 def check_binary(rep, rel, data):
     seen = set()
+    meta = image_text(data)
+    if meta is not None:
+        data = meta
     for raw in (data, data.replace(b"\x00", b"")):
         text = normalize(raw.decode("utf-8", "replace"))
         for rule, rx in WORDS:
@@ -346,8 +416,13 @@ def check_file(rep, rel, path):
         check_binary(rep, rel, data)
     text = text.replace("\r\n", "\n")
     lines = text.split("\n")
+    fold_lines = [None] * len(lines)
+    if ext == ".json" and FOLD_BLOCK[0]:
+        encoded = json.dumps(FOLD_BLOCK[0], ensure_ascii=False)[1:-1]
+        if encoded in text:
+            fold_lines = text.replace(encoded, "", 1).split("\n")
     for n, line in enumerate(lines, 1):
-        check_line(rep, rel, n, line, license_file)
+        check_line(rep, rel, n, line, license_file, fold_lines[n - 1])
     check_comments(rep, rel, text, kind(rel, lines[0]))
     if ext == ".json":
         check_json(rep, rel, text)
@@ -381,6 +456,11 @@ def check_path(rep, rel, is_dir):
 
 def scrub(root):
     rep = Report()
+    fold_path = os.path.join(root, *FOLD_TABLE.split("/"))
+    FOLD_BLOCK[0] = None
+    if os.path.isfile(fold_path) and not os.path.islink(fold_path):
+        with open(fold_path, encoding="utf-8", errors="replace", newline="") as f:
+            FOLD_BLOCK[0] = '__bundle_modules["lib.fold"] = function(...)\n' + f.read() + "end\n"
     count = 0
     broot = os.fsencode(root)
     for dirpath, dirnames, filenames in os.walk(broot):

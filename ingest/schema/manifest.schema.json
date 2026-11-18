@@ -55,7 +55,8 @@
       "properties": {
         "index": {"type": "string", "pattern": "\\{lang\\}"},
         "sets": {"type": "string", "pattern": "\\{lang\\}.*\\{set\\}"},
-        "aliases": {"type": "string", "minLength": 1}
+        "aliases": {"type": "string", "minLength": 1},
+        "packs": {"type": "string", "minLength": 1}
       }
     }
   }
