@@ -1,0 +1,45 @@
+.github/check_public.py
+  s_367f68ecdfbae9::t_2f6598f8183ef5 1-436
+.github/workflows/data.yml
+  s_367f68ecdfbae9::t_ce53dc716f2344 1-91
+LICENSE
+  s_367f68ecdfbae9::t_0500ad63eeac9b 1-21
+README.md
+  s_367f68ecdfbae9::t_fc43361c1383e5 1-116
+ingest/aliases.json
+  s_367f68ecdfbae9::t_e3f714e213213a 1-8
+ingest/build_data.py
+  s_367f68ecdfbae9::t_3138e94986f576 1-580
+ingest/datatsv.py
+  s_367f68ecdfbae9::t_fd27ee3cf5d9b7 1-117
+ingest/fetch.py
+  s_367f68ecdfbae9::t_d0964c34e6f56f 1-153
+ingest/fold.json
+  s_367f68ecdfbae9::t_5c253a7a230ad5 1-345
+ingest/normalize_vectors.json
+  s_367f68ecdfbae9::t_89b430c2eaf13b 1-278
+ingest/schema/card.schema.json
+  s_367f68ecdfbae9::t_4643c579963a10 1-44
+ingest/schema/index.schema.json
+  s_367f68ecdfbae9::t_d9cd9455c020b2 1-27
+ingest/schema/manifest.schema.json
+  s_367f68ecdfbae9::t_48ba5aed08eddd 1-62
+ingest/validate.py
+  s_367f68ecdfbae9::t_c803548ede01fd 1-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "893b3e3f9bb9e9a265704835bedd4af66d18ec5a",
+  "prompts": {},
+  "sessions": {
+    "s_367f68ecdfbae9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69388b2f-d589-41f8-94c8-a795e529a8a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DrMxrcy <drmxrcy@gmail.com>"
+    }
+  }
+}
