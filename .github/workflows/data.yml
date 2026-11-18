@@ -1,0 +1,91 @@
+name: Data
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Public check
+        run: |
+          mkdir "$RUNNER_TEMP/code"
+          git ls-files -z -- . ':!index' ':!sets' ':!manifest.json' ':!aliases.json' | xargs -0 cp --parents -t "$RUNNER_TEMP/code"
+          python3 .github/check_public.py "$RUNNER_TEMP/code"
+
+      - name: Tests
+        run: |
+          if [ -d tests ]; then python3 -m unittest discover -s tests; fi
+
+      - name: Fetch
+        run: python3 ingest/fetch.py --out "$RUNNER_TEMP/src" --lorcast "$RUNNER_TEMP/lorcast.json"
+
+      - name: Build
+        run: python3 ingest/build_data.py --src "$RUNNER_TEMP/src" --lorcast "$RUNNER_TEMP/lorcast.json" --previous "$GITHUB_WORKSPACE" --out "$RUNNER_TEMP/out"
+
+      - name: Validate
+        run: python3 ingest/validate.py "$RUNNER_TEMP/out"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: data
+          path: ${{ runner.temp }}/out
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: data
+          path: ${{ runner.temp }}/out
+
+      - name: Validate
+        run: python3 ingest/validate.py "$RUNNER_TEMP/out"
+
+      - name: Stage
+        run: |
+          rm -rf index sets manifest.json aliases.json
+          cp -R "$RUNNER_TEMP/out/index" "$RUNNER_TEMP/out/sets" "$RUNNER_TEMP/out/manifest.json" "$RUNNER_TEMP/out/aliases.json" .
+          python3 ingest/validate.py .
+          git add -A -- index sets manifest.json aliases.json
+
+      - name: Commit and tag
+        run: |
+          if git diff --cached --quiet; then
+            echo "No data change."
+            exit 0
+          fi
+          version="$(python3 -c "import json; print(json.load(open('manifest.json'))['dataVersion'][:10])")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Data $version"
+          tag="data-$version-$(git rev-parse --short=7 HEAD)"
+          git tag "$tag"
+          git push --atomic origin "HEAD:refs/heads/$GITHUB_REF_NAME" "refs/tags/$tag"
+          echo "Published $tag"

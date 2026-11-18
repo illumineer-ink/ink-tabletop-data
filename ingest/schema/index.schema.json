@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "index.schema.json",
+  "title": "One row of index/<lang>.tsv, the compact name index",
+  "columns": ["id", "n", "name", "version", "cost", "ink", "type", "img", "set3", "num3", "lorcast", "landscape", "strength", "willpower", "lore", "text"],
+  "type": "object",
+  "required": ["id", "n", "name", "cost", "ink", "type", "img", "set3", "landscape"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "integer", "minimum": 1},
+    "n": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "cost": {"type": "integer", "minimum": 0},
+    "ink": {"type": "array", "maxItems": 2, "items": {"enum": ["Amber", "Amethyst", "Emerald", "Ruby", "Sapphire", "Steel"]}},
+    "type": {"enum": ["Character", "Action", "Item", "Location"]},
+    "img": {"type": "string", "pattern": "^https://api\\.lorcana\\.ravensburger\\.com/[A-Za-z0-9/_.-]+\\.(jpg|png)$"},
+    "set3": {"type": "string", "pattern": "^([0-9]{3}|[A-Za-z][A-Za-z0-9]{0,11})$"},
+    "num3": {"type": "string", "pattern": "^[0-9]{3,}$"},
+    "lorcast": {"type": "string", "pattern": "^crd_[0-9a-f]{32}$"},
+    "landscape": {"type": "boolean"},
+    "strength": {"type": "integer", "minimum": 0},
+    "willpower": {"type": "integer", "minimum": 0},
+    "lore": {"type": "integer", "minimum": 0},
+    "text": {"type": "string"}
+  }
+}
