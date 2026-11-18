@@ -1,0 +1,19 @@
+ingest/pack_slots.json
+  s_367f68ecdfbae9::t_0ed9f61e1e6b87 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3353a5988ff1b3a2aaf24d2b6f94fe0748e66108",
+  "prompts": {},
+  "sessions": {
+    "s_367f68ecdfbae9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69388b2f-d589-41f8-94c8-a795e529a8a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DrMxrcy <drmxrcy@gmail.com>"
+    }
+  }
+}
