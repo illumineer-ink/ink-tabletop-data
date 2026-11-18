@@ -1,0 +1,31 @@
+.github/check_public.py
+  s_bd3476172161cf::t_aa4eb8c0ac501c 16,98,208,211-220,314-319,322,326-333,343-385,388-390,419-423,425,459-463
+.github/workflows/data.yml
+  s_bd3476172161cf::t_b320f9bb11b40a 29,73-74,76
+README.md
+  s_bd3476172161cf::t_4f8381c3802dd2 54,56,118-136
+ingest/build_data.py
+  s_bd3476172161cf::t_31100581f1f8fc 10,41-42,370-379,446
+ingest/schema/manifest.schema.json
+  s_bd3476172161cf::t_cfeb95031a88e8 58-59
+ingest/schema/packs.schema.json
+  s_bd3476172161cf::t_a3219090e20b78 1-86
+ingest/validate.py
+  s_bd3476172161cf::t_42c089a852decc 123-150,221-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bd1600dd2afe8059a5a1f39e7abe7e75a0778ef",
+  "prompts": {},
+  "sessions": {
+    "s_bd3476172161cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77a8e2e5-e533-48a2-97e7-9bb34ac0f01f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DrMxrcy <drmxrcy@gmail.com>"
+    }
+  }
+}
